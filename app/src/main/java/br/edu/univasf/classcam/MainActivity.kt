@@ -24,6 +24,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import br.edu.univasf.classcam.ui.theme.ClassCamTheme
+import java.text.Normalizer
+import androidx.compose.runtime.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,6 +40,7 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") { HomeScreen(navController) }
                     composable("list") { SubjectListScreen(navController) }
+                    composable("add") { AddSubjectScreen(navController) }
                 }
             }
         }
@@ -123,7 +126,7 @@ fun SubjectListScreen(navController: NavController) {
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { /* Ir para tela de cadastro */ }) {
+            FloatingActionButton(onClick = { navController.navigate("add") }) {
                 Icon(Icons.Default.Add, contentDescription = "Adicionar Disciplina")
             }
         }
@@ -154,6 +157,90 @@ fun SubjectListScreen(navController: NavController) {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+fun gerarNomePasta(texto: String): String {
+    val normalizado = Normalizer.normalize(texto, Normalizer.Form.NFD)
+    val semAcento = normalizado.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
+    return semAcento.lowercase().replace(" ", "_").replace("[^a-z0-9_]".toRegex(), "")
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddSubjectScreen(navController: NavController) {
+    // Variáveis de Estado para guardar o que o usuário digita
+    var nomeDisciplina by remember { mutableStateOf("") }
+    var nomePasta by remember { mutableStateOf("") }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Nova Disciplina") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Campo: Nome da Disciplina
+            OutlinedTextField(
+                value = nomeDisciplina,
+                onValueChange = { novoTexto ->
+                    nomeDisciplina = novoTexto
+                    // A mágica acontece aqui: atualiza a pasta automaticamente!
+                    nomePasta = gerarNomePasta(novoTexto)
+                },
+                label = { Text("Nome da Disciplina (Ex: Física I)") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Campo: Nome da Pasta (Preenchido automaticamente)
+            OutlinedTextField(
+                value = nomePasta,
+                onValueChange = { nomePasta = it },
+                label = { Text("Nome da Pasta no Celular") },
+                modifier = Modifier.fillMaxWidth(),
+                supportingText = { Text("Você pode editar se quiser.") }
+            )
+
+            // Placeholder para Dias e Horários (Faremos com Dropdown/TimePicker depois)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = { /* Abrir seletor de dia */ }, modifier = Modifier.weight(1f)) {
+                    Text("Dia: Segunda")
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { /* Abrir relógio */ }, modifier = Modifier.weight(1f)) {
+                    Text("Início: 14:00")
+                }
+                OutlinedButton(onClick = { /* Abrir relógio */ }, modifier = Modifier.weight(1f)) {
+                    Text("Fim: 16:00")
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            // Botão Salvar
+            Button(
+                onClick = { /* Lógica de salvar no Banco de Dados vai aqui */ },
+                modifier = Modifier.fillMaxWidth().height(50.dp)
+            ) {
+                Text("Salvar Disciplina", fontSize = 16.sp)
             }
         }
     }
