@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,19 +15,21 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import br.edu.univasf.classcam.ui.theme.ClassCamTheme
+import br.edu.univasf.classcam.viewmodel.ClassCamViewModel
+import br.edu.univasf.classcam.viewmodel.ClassCamViewModelFactory
 import java.text.Normalizer
-import androidx.compose.runtime.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,8 +40,38 @@ class MainActivity : ComponentActivity() {
                 // Inicia o controlador de navegação
                 val navController = rememberNavController()
 
-                // Configura as rotas do app
-                NavHost(navController = navController, startDestination = "home") {
+                // Configura as rotas do app com animações de transição
+                NavHost(
+                    navController = navController,
+                    startDestination = "home",
+                    // Animação ao ABRIR uma nova tela (Desliza para a esquerda)
+                    enterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(400) // 400 milissegundos de duração
+                        )
+                    },
+                    // Animação da tela velha saindo
+                    exitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Left,
+                            animationSpec = tween(400)
+                        )
+                    },
+                    // Animação ao VOLTAR (Pop) na setinha (Desliza para a direita)
+                    popEnterTransition = {
+                        slideIntoContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(400)
+                        )
+                    },
+                    popExitTransition = {
+                        slideOutOfContainer(
+                            towards = AnimatedContentTransitionScope.SlideDirection.Right,
+                            animationSpec = tween(400)
+                        )
+                    }
+                ) {
                     composable("home") { HomeScreen(navController) }
                     composable("list") { SubjectListScreen(navController) }
                     composable("add") { AddSubjectScreen(navController) }
@@ -170,7 +204,7 @@ fun gerarNomePasta(texto: String): String {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddSubjectScreen(navController: NavController) {
+fun AddSubjectScreen(navController: NavController, viewModel: ClassCamViewModel = viewModel(factory = ClassCamViewModelFactory)) {
     // Variáveis de Estado para guardar o que o usuário digita
     var nomeDisciplina by remember { mutableStateOf("") }
     var nomePasta by remember { mutableStateOf("") }
@@ -189,6 +223,7 @@ fun AddSubjectScreen(navController: NavController) {
                 )
             )
         }
+
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -237,7 +272,24 @@ fun AddSubjectScreen(navController: NavController) {
 
             // Botão Salvar
             Button(
-                onClick = { /* Lógica de salvar no Banco de Dados vai aqui */ },
+                onClick = {
+                    // Por enquanto vamos mockar o horário (Ex: Segunda, 14:00 às 16:00)
+                    // até colocarmos os relógios reais na tela
+                    val diaSegunda = 2
+                    val inicio14h = (14 * 60) // 840 minutos
+                    val fim16h = (16 * 60)   // 960 minutos
+
+                    viewModel.salvarDisciplinaCompleta(
+                        nome = nomeDisciplina,
+                        nomePasta = nomePasta,
+                        diaSemana = diaSegunda,
+                        horaInicioMinutos = inicio14h,
+                        horaFimMinutos = fim16h
+                    )
+
+                    // Volta para a tela anterior após salvar
+                    navController.popBackStack()
+                },
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Salvar Disciplina", fontSize = 16.sp)
